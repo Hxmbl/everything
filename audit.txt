@@ -1,0 +1,367 @@
+.
+├── README.md
+├── audit.txt
+├── go.mod
+└── main.go
+
+1 directory, 4 files
+
+
+==== FILE: .gitignore ====
+# Time to let AI fuck around in gitignore yay
+
+dist/
+
+# Wow ok AI autocomplete did not do anything.
+
+
+==== FILE: README.md ====
+# everything
+(VIBE CODED)
+A simple CLI tool to snapshot a directory by printing its file contents.
+
+Designed to be fast, predictable, and not shoot you in the foot.
+
+---
+
+* Recursively scans files
+* Excludes files and directories
+* Optional max file size filter
+* Skips binary files (optional)
+* Automatically avoids reading its own output (no infinite loop)
+
+---
+
+##  Installation
+> Requires Go 1.20+
+### Option 1 — Build locally
+
+```bash
+go build -o everything
+```
+
+Run it:
+
+```bash
+./everything
+```
+
+---
+
+### Option 2 — Install with Go
+
+```bash
+go install github.com/hxmbl/everything@latest
+```
+
+Then run:
+
+```bash
+everything
+```
+
+### Option 3 — Download binary
+Download the latest release from the [GitHub releases page]
+
+If I remember to make one, that is.
+
+### Option 4 — Hope it's in your package manager
+If you're on a Linux distro, maybe someone has packaged it by the time you read this.
+Maybe I have.
+Maybe it's in Homebrew for macOS.
+Maybe I completely forgot.
+
+---
+
+## Usage
+
+Basic usage:
+
+```bash
+everything > audit.txt
+```
+
+---
+
+### With flags
+
+```bash
+everything \
+  --output audit.txt \
+  --exclude ".git,node_modules,audit.txt" \
+  --max-size 1MB \
+  --no-binary
+```
+
+---
+
+## Flags
+
+| Flag          | Description                                       |
+| ------------- | ------------------------------------------------- |
+| `--output`    | Output file (auto-excluded from scan)             |
+| `--exclude`   | Comma-separated list of files/directories to skip |
+| `--max-size`  | Skip files larger than this (in bytes)            |
+| `--no-binary` | Skip binary files                                 |
+
+---
+
+## Why this exists
+
+Honestly, no clue, started as a bash alias.
+Then I thought, "Why not make it a proper tool?"
+
+## Future ideas
+
+* Glob-based excludes
+* Streaming reads (for large files)
+* Parallel file processing
+* File hashing / integrity mode
+* Pretty tree output
+
+---
+
+## 🛠️ Development
+
+Run locally:
+
+```bash
+go run .
+```
+
+---
+
+## License
+
+"Whats that?"
+
+Do whatever u want with this, idrc.
+
+---
+
+## Notes
+
+This tool intentionally stays simple.
+
+If it ever becomes complicated, something has gone seriously wrong.
+
+
+==== FILE: go.mod ====
+module github.com/hxmbl/everything
+
+go 1.26.2
+
+
+==== FILE: main.go ====
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+)
+
+type Config struct {
+	OutputPath string
+	Exclude    map[string]bool
+
+	MaxSize  int64
+	NoBinary bool
+
+	IgnoreGit  bool
+	IgnoreVenv bool
+	Force      bool
+}
+
+func tryPrintTree(writer io.Writer) {
+	cmd := exec.Command("tree")
+
+	// attach output to same writer
+	cmd.Stdout = writer
+	cmd.Stderr = nil
+
+	// if tree doesn't exist, just skip silently
+	if err := cmd.Run(); err != nil {
+		return
+	}
+
+	fmt.Fprintln(writer, "\n")
+}
+
+func main() {
+	cfg := parseArgs()
+
+	writer, cleanup := setupOutput(cfg)
+	defer cleanup()
+
+	tryPrintTree(writer)
+
+	err := filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+
+		name := d.Name()
+
+		if d.IsDir() {
+			if shouldSkipDir(name, cfg) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		if shouldSkipFile(path, name, cfg) {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+
+		if cfg.MaxSize > 0 && info.Size() > cfg.MaxSize {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+
+		if cfg.NoBinary && isBinary(data) {
+			return nil
+		}
+
+		fmt.Fprintf(writer, "==== FILE: %s ====\n", path)
+		writer.Write(data)
+		writer.Write([]byte("\n\n"))
+
+		return nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+//
+// CONFIG
+//
+
+func parseArgs() *Config {
+	cfg := &Config{
+		Exclude:    make(map[string]bool),
+		IgnoreVenv: true,
+	}
+
+	args := os.Args[1:]
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+
+		// positional output
+		if !strings.HasPrefix(a, "-") && cfg.OutputPath == "" {
+			cfg.OutputPath = a
+			continue
+		}
+
+		switch a {
+		case "--ignore-git":
+			cfg.IgnoreGit = true
+
+		case "--ignore-venv":
+			cfg.IgnoreVenv = true
+
+		case "--include-venv":
+			cfg.IgnoreVenv = false
+
+		case "--no-binary":
+			cfg.NoBinary = true
+
+		case "--force":
+			cfg.Force = true
+		}
+	}
+
+	return cfg
+}
+
+//
+// OUTPUT SAFETY
+//
+
+func setupOutput(cfg *Config) (io.Writer, func()) {
+	if cfg.OutputPath == "" {
+		return os.Stdout, func() {}
+	}
+
+	absOut, _ := filepath.Abs(cfg.OutputPath)
+
+	cfg.Exclude[absOut] = true
+	cfg.Exclude[filepath.Base(cfg.OutputPath)] = true
+
+	if !cfg.Force {
+		if _, err := os.Stat(cfg.OutputPath); err == nil {
+			fmt.Println("Refusing to overwrite existing file:", cfg.OutputPath)
+			os.Exit(1)
+		}
+	}
+
+	f, err := os.Create(cfg.OutputPath)
+	if err != nil {
+		panic(err)
+	}
+
+	return f, func() { f.Close() }
+}
+
+//
+// IGNORE LOGIC (centralised = important improvement)
+//
+
+func shouldSkipDir(name string, cfg *Config) bool {
+	if cfg.IgnoreGit && name == ".git" {
+		return true
+	}
+
+	if cfg.IgnoreVenv {
+		switch name {
+		case ".venv", "venv", "__pycache__", "node_modules":
+			return true
+		}
+	}
+
+	if cfg.Exclude[name] {
+		return true
+	}
+
+	return false
+}
+
+func shouldSkipFile(path, name string, cfg *Config) bool {
+	abs, _ := filepath.Abs(path)
+
+	if cfg.Exclude[name] || cfg.Exclude[path] || cfg.Exclude[abs] {
+		return true
+	}
+
+	return false
+}
+
+//
+// HELPERS
+//
+
+func isBinary(data []byte) bool {
+	for _, b := range data {
+		if b == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+
