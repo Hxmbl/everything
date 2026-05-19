@@ -95,20 +95,25 @@ Venv/generated dirs by default (`.venv`, `venv`, `__pycache__`, `node_modules`).
 
 Requires Go 1.20+.
 
-### Build it
+### go install (easiest)
 ```bash
 go install github.com/hxmbl/everything@latest
 ```
 
-### Or build from source
+### Homebrew (if you have my tap)
 ```bash
-git clone github.com/hxmbl/everything
+brew install hxmbl/everything/everything
+```
+
+### Download a release binary
+Grab the right tarball from the [releases page](https://github.com/Hxmbl/everything/releases), extract it, and drop it in your PATH.
+
+### Build from source
+```bash
+git clone https://github.com/Hxmbl/everything
 cd everything
 go build -o everything && ./everything
 ```
-
-### Or ask your package manager
-Maybe it's there. Maybe it's not. Vibes.
 
 ---
 

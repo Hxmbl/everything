@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+var version = "dev"
+
 type Config struct {
 	OutputPath string
 	Exclude    map[string]bool
@@ -147,6 +149,10 @@ func parseArgs() *Config {
 			if i < len(args) {
 				cfg.MaxSize = parseSize(args[i])
 			}
+
+		case "--version", "-v":
+			fmt.Println("everything", version)
+			os.Exit(0)
 		}
 	}
 
