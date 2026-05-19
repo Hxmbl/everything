@@ -23,21 +23,18 @@ builds:
       - -s -w -X main.version={{.Version}}
 
 archives:
-  - format: tar.gz
-    format_overrides:
-      - goos: windows
-        format: zip
-    name_template: >-
+  - name_template: >-
       {{ .ProjectName }}_{{ .Version }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else }}{{ .Arch }}{{ end }}
+    formats: ["tar.gz"]
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
 
 checksum:
   name_template: "checksums.txt"
-
-snapshot:
-  name_template: "{{ .Version }}-next"
 
 changelog:
   sort: asc
@@ -59,3 +56,4 @@ brews:
     license: MIT
     test: |
       system "#{bin}/everything --version"
+    skip_upload: auto
