@@ -133,7 +133,7 @@ func parseArgs() *Config {
 		case "--no-binary":
 			cfg.NoBinary = true
 
-		case "--force":
+		case "--force", "--overwrite":
 			cfg.Force = true
 
 		case "--exclude":

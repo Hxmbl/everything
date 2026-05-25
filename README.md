@@ -50,7 +50,7 @@ everything --output snapshot.txt
 | `--exclude <list>` | Comma-separated names/paths to skip | `--exclude "*.exe,secrets.txt"` |
 | `--max-size <n>` | Skip files larger than this | `--max-size 1MB` or `--max-size 500KB` |
 | `--no-binary` | Skip files containing null bytes | `--no-binary` |
-| `--force` | Overwrite existing output file | `--force` |
+| `--force` or `--overwrite` | Overwrite existing output file | `--force`/`--overwrite` |
 | `--ignore-git` | Skip `.git/` directory | `--ignore-git` |
 | `--ignore-venv` | (on by default) Skip `.venv`, `venv`, `__pycache__`, `node_modules` | `--ignore-venv` |
 | `--include-venv` | Disable auto-venv skipping | `--include-venv` |
