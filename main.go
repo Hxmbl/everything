@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var version = "dev"
+var version = "release-0.13"
 
 type Config struct {
 	OutputPath string
@@ -153,10 +153,38 @@ func parseArgs() *Config {
 		case "--version", "-v":
 			fmt.Println("everything", version)
 			os.Exit(0)
+
+		case "--help", "-h":
+			printHelp()
+			os.Exit(0)
 		}
 	}
 
 	return cfg
+}
+
+func printHelp() {
+	fmt.Println(`everything – dump your project into a flat file
+
+Usage:
+  everything [flags] [output-path]
+
+Flags:
+  --output <path>     Write to file (auto-excluded from scan)
+  --exclude <list>    Comma-separated names/paths to skip
+  --max-size <size>   Skip files larger than this (e.g. 1MB, 500KB)
+  --no-binary         Skip binary files (files containing null bytes)
+  --force             Overwrite existing output file
+  --ignore-git        Skip .git directory
+  --ignore-venv       (default) Skip .venv, venv, __pycache__, node_modules
+  --include-venv      Don't skip venv/pycache/node_modules
+  --version, -v       Show version
+  --help, -h          Show this help
+
+Examples:
+  everything > out.txt
+  everything --output context.txt --no-binary
+  everything --exclude "node_modules,.git" --max-size 1MB`)
 }
 
 func parseSize(s string) int64 {
